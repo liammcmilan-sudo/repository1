@@ -5,20 +5,12 @@ require_once __DIR__ . '/../../app/bootstrap.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
-if (!is_string($apiKey) || !preg_match('/^vsk_[a-f0-9]{64}$/', $apiKey)) {
+if (!isset($_COOKIE['visitor_key']) || !is_string($_COOKIE['visitor_key']) || !preg_match('/^vsk_[a-f0-9]{64}$/', $_COOKIE['visitor_key'])) {
     http_response_code(401);
-    echo json_encode(['error' => 'A valid X-API-Key header is required.']);
+    echo json_encode(['error' => 'A valid first-party visitor cookie is required.']);
     exit;
 }
-
-$statement = db()->prepare('SELECT id FROM users WHERE api_key_hash = :key_hash');
-$statement->execute(['key_hash' => hash('sha256', $apiKey)]);
-if (!$statement->fetch()) {
-    http_response_code(401);
-    echo json_encode(['error' => 'The search key is invalid or has been replaced.']);
-    exit;
-}
+ensure_visitor();
 
 $query = trim((string) ($_GET['q'] ?? ''));
 if ($query === '' || strlen($query) > 200) {
